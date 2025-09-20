@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Adjust for your registry
         DOCKER_REGISTRY = "docker.io"
-        DOCKER_REPO = "meeraparigi/my-sample-react-app-new"       // Replace with your Docker hub Username and Repo name
+        DOCKER_REPO = "meeraparigi/my-sample-react-app-1"       // Replace with your Docker hub Username and Repo name
         DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
 
         // SonarQube config name in Jenkins
