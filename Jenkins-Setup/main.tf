@@ -38,11 +38,11 @@ data "aws_ami" "my_ami" {
         values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
     }
 }
-
 resource "aws_iam_role" "terraform_jenkins_role" {
     name = "Terraform-JenkinsEC2-Role"
+
     assume_role_policy = jsonencode({
-        Version = "2012-17-10"
+        Version = "2012-10-17"
         Statement = [
             {
                 Effect = "Allow"
@@ -57,7 +57,7 @@ resource "aws_iam_role" "terraform_jenkins_role" {
 
 resource "aws_iam_role_policy_attachment" "terraform_role_attach" {
     role = aws_iam_role.terraform_jenkins_role.name
-    policy_arn = "arn:aws:iam::aws:policy/AdministraorAccess"
+    policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 resource "aws_iam_instance_profile" "jenkins_profile" {
@@ -72,7 +72,15 @@ resource "aws_instance" "my_server" {
     key_name = var.key_filename
     associate_public_ip_address = true
     vpc_security_group_ids = [aws_security_group.my_server_sg.id]
-    iam_instance_profile = aws_iam_instance_profile.jenkins_profile.name 
+    iam_instance_profile = aws_iam_instance_profile.jenkins_profile.name
+    ebs_optimized = true
+
+    root_block_device {
+        encrypted             = true
+        volume_type           = "gp3"
+        volume_size           = 30
+        delete_on_termination = true
+    }
 
     provisioner "remote-exec" {
         inline = [

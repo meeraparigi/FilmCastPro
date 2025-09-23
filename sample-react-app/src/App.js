@@ -1,12 +1,10 @@
-import React from "react";
- 
-function App() {
+import React from "react";import Header from "./components/header/header";import Counter from "./components/counter/counter";
+export default function App() {
   return (
-<div style={{ textAlign: "center", padding: "50px" }}>
-<h1>Hello, World!</h1>
-<p>This is a simple webpage loaded by a React app.</p>
-</div>
+    <div>
+      <Header title="FilmCast Pro" />
+      <Counter initialCount={0} />
+      <p>Welcome to the app!</p>
+    </div>
   );
 }
- 
-export default App;
