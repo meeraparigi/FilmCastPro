@@ -4,7 +4,7 @@
   "scripts": {
     "start": "react-scripts start",
     "test": "react-scripts test --watchAll=false --coverage",
-    "build": "react-scripts build && npx sonarqube-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN -Dsonar.organization=$SONAR_ORG -Dsonar.projectKey=$SONAR_PROJECT",
+    "build": "react-scripts build && npx sonarqube-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_TOKEN",
     "eject": "react-scripts eject"
   },
 
