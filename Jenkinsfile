@@ -98,7 +98,7 @@ pipeline {
            }
         }
 
-        /*stage('Trivy Filesystem Scan') {
+        stage('Trivy Filesystem Scan') {
           steps {
             script {
               // Scan project directory before build
@@ -108,7 +108,7 @@ pipeline {
                 """
             }
           }
-        }*/                         
+        }                        
                                  
         stage('Create Docker Image') {
             steps {
