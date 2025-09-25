@@ -52,7 +52,7 @@ pipeline {
             }
         }   
 
-        stage('SonarQube Scan') {
+        /*stage('SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
                     sh '''
@@ -60,6 +60,24 @@ pipeline {
                           -Dsonar.host.url=${SONAR_HOST_URL} \
                           -Dsonar.token=${SONAR_TOKEN}
                     '''
+                }
+            }
+        }*/
+
+        stage('SonarQube Scan') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                    dir('sample-react-app') {
+                        sh '''
+                            echo "Running SonarQube scan inside $(pwd)"
+                            ls -l sonar-project.properties
+ 
+                            npx sonar-scanner \
+                              -Dproject.settings=sonar-project.properties \
+                              -Dsonar.host.url=${SONAR_HOST_URL} \
+                              -Dsonar.token=${SONAR_TOKEN}
+                        '''
+                    }
                 }
             }
         }
