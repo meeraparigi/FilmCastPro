@@ -66,7 +66,7 @@ pipeline {
 
         stage('SonarQube Scan') {
             steps {
-                withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('SonarCloud') {
                     dir('sample-react-app') {
                         sh '''
                             echo "Running SonarQube scan inside $(pwd)"
@@ -75,6 +75,7 @@ pipeline {
                             npx sonar-scanner \
                               -Dproject.settings=sonar-project.properties \
                               -Dsonar.host.url=${SONAR_HOST_URL} \
+                              -Dsonar.organization=meeraparigi \
                               -Dsonar.token=${SONAR_TOKEN}
                         '''
                     }
