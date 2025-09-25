@@ -44,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Build React App & Sonar Scan') {
+        stage('Build React App') {
             steps {
                 dir('sample-react-app') {
                     sh 'npm run build'
@@ -52,20 +52,45 @@ pipeline {
             }
         }   
 
-        /* stage('SonarQube Scan') {
+        stage('SonarQube Scan') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN']) {
                     sh '''
-                    sonar-scanner \
-                      -Dsonar.projectKey=my-sample-react-app \
-                      -Dsonar.sources=src \
-                      -Dsonar.host.url=$SONAR_HOST_URL \
-                      -Dsonar.login=$SONAR_AUTH_TOKEN
+                        npx sonar-scanner \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.token=${SONAR_TOKEN}
                     '''
                 }
             }
-        } */ 
+        }
 
+        stage('Sonar Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                  script {
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                      error "❌ Quality Gate failed: ${qg.status}"
+                    } else {
+                      echo "✅ Quality Gate passed for build version ${BUILD_NUMBER}"
+                    }
+                 }    
+              }    
+           }
+        }
+
+        stage('Trivy Filesystem Scan') {
+          steps {
+            script {
+              // Scan project directory before build
+                sh """
+                    echo "🔍 Running Trivy FS Scan..."
+                    trivy fs --exit-code 1 --severity HIGH,CRITICAL ./sample-react-app
+                """
+            }
+          }
+        }                         
+                                 
         stage('Create Docker Image') {
             steps {
                 script {
@@ -77,13 +102,13 @@ pipeline {
             }
         }
 
-        /* stage('Container Image Scanning - Trivy') {
+        stage('Container Image Scanning - Trivy') {
             steps {
                 sh """
                   trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKER_REPO}:${DOCKER_IMAGE_TAG}
                 """
             }
-        } */
+        }
 
         stage('Push Docker Image to Registry') {
             steps {
