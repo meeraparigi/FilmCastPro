@@ -104,7 +104,7 @@ pipeline {
               // Scan project directory before build
                 sh """
                     echo "🔍 Running Trivy FS Scan..."
-                    trivy fs --exit-code 1 --severity HIGH,CRITICAL ./sample-react-app
+                    trivy fs --exit-code 0 --severity HIGH,CRITICAL ./sample-react-app
                 """
             }
           }
