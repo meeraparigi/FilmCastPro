@@ -26,24 +26,20 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-        dir('') {
-          sh 'npm ci'  
-        }
+            sh 'npm ci'  
       }
     }
 
     stage('Build Application') {
       steps {
-        dir('') {
-          sh 'npm run build'  
-        }
+            sh 'npm run build'  
       }
     }
 
     stage('Docker Build Image') {
       steps {
         script {
-          dockerImage = docker.build("${DOCKER_REPO}:${DOCKER_TAG}", "src/")
+          dockerImage = docker.build("${DOCKER_REPO}:${DOCKER_TAG}", ".")
         }
       }
     }
