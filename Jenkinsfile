@@ -4,10 +4,11 @@ pipeline {
 
   environment {
     APP_NAME = "filmcastpro-app"
+    DOCKER_REGISTRY = "docker.io"
     DOCKER_REPO = "meeraparigi/filmcastpro-app"
     DOCKER_TAG = "${env.BUILD_NUMBER}"
     AWS_REGION = "us-east-1"
-    KUBE_CONFIG = credentials('eks-kubeconfig')
+    KUBE_CONFIG = "eks-kubeconfig"
     HELM_RELEASE = "filmcastpro-app-release"
     HELM_CHART_PATH = "helm/filmcastpro-app"
     EKS_NAMESPACE = "staging"
@@ -48,7 +49,7 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsID: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: ''DOCKER_PASS)]) {
           sh '''
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin $DOCKER_REGISTRY
             docker push ${DOCKER_REPO}:${DOCKER_TAG}
           '''
         }
