@@ -32,7 +32,7 @@ pipeline {
       }
     }
 
-     stage('Build Application') {
+    stage('Build Application') {
       steps {
         dir('') {
           sh 'npm run build'  
@@ -40,10 +40,10 @@ pipeline {
       }
     }
 
-     stage('Docker Build Image') {
+    stage('Docker Build Image') {
       steps {
         script {
-          dockerImage = docker.build("${DOCKER_REPO}:${DOCKER_TAG}", "filmcastpro-app/")
+          dockerImage = docker.build("${DOCKER_REPO}:${DOCKER_TAG}", "src/")
         }
       }
     }
