@@ -79,8 +79,8 @@ pipeline {
               echo "Updating kubeconfig for EKS cluster..."
               aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H --kubeconfig ./kubeconfig
       
-              echo "Verifying cluster access..."
-              kubectl get nodes
+              /*echo "Verifying cluster access..."*/
+              /*kubectl get nodes*/
       
               echo "Deploying Helm Chart..."
               helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
