@@ -56,7 +56,7 @@ pipeline {
       }
     }
 
-    stage('Deploy to EKS using Helm') {
+    /*stage('Deploy to EKS using Helm') {
       steps {
         script {
                  withCredentials([file(credentialsID: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
@@ -79,7 +79,7 @@ pipeline {
               }
            }
         }
-    }
+    }*/
 
     /*stage('Update Helm values and push to Git') {
       steps {
