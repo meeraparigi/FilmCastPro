@@ -58,7 +58,37 @@ pipeline {
       }
     }
 
-    stage('Deploy to EKS using Helm') {
+    stage('Deploy to EKS using Helm') { 
+      steps {
+        script {
+          withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
+            sh '''
+              echo "Setting up kubeconfig ..."
+              export KUBECONFIG=$KUBECONFIG_PATH
+              
+              # Update kubeconfig for EKS cluster
+              aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H || true
+    
+              echo "Deploying Helm Chart ..."
+              helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
+                --namespace ${EKS_NAMESPACE} \
+                --create-namespace \
+                --set image.repository=${DOCKER_REPO} \
+                --set image.tag=${DOCKER_TAG} \
+                --wait --timeout 300s || \
+                (echo "Helm deployment failed, rolling back ..." && \
+                 helm rollback ${HELM_RELEASE} && exit 1)
+    
+              echo "Verifying deployment rollout ..."
+              kubectl rollout status deployment/${APP_NAME} -n ${EKS_NAMESPACE} --timeout=300s
+            '''
+          }
+        }
+      }
+    }
+
+
+    /*stage('Deploy to EKS using Helm') {
       steps {
         script {
                  withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
@@ -83,7 +113,7 @@ pipeline {
               }
            }
         }
-    }
+    }*/
 
     /*stage('Update Helm values and push to Git') {
       steps {
