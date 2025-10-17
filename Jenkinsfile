@@ -65,7 +65,7 @@ pipeline {
                  sh '''
                    echo "Setting up kubeconfig ..."
                    export KUBECONFIG=$KUBECONFIG_PATH
-                   aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-cluster || true
+                   aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H || true
 
                    echo "Deploying Helm Chart ..."
                    helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
