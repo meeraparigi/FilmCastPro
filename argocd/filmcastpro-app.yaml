@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: filmcastpro-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/meeraparigi/FilmCastPro.git'
+    targetRevision: master
+    path: helm/filmcastpro-app
+    helm:
+      valueFiles:
+      - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated: 
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
