@@ -58,40 +58,47 @@ pipeline {
       }
     }
 
-    stage('Deploy to EKS using Helm') { 
-      steps {
-        script {
-          withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
-            withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
-              sh '''
-                echo "Setting up kubeconfig ..."
-                export KUBECONFIG=$KUBECONFIG_PATH
-    
-                echo "Updating kubeconfig for EKS cluster..."
-                aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H
-    
-                echo "Testing cluster connectivity..."
-                kubectl get nodes
-    
-                echo "Deploying Helm Chart ..."
-                helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
-                  --namespace ${EKS_NAMESPACE} \
-                  --create-namespace \
-                  --set image.repository=${DOCKER_REPO} \
-                  --set image.tag=${DOCKER_TAG} \
-                  --wait --timeout 300s || \
-                  (echo "Helm deployment failed, rolling back ..." && \
-                   helm rollback ${HELM_RELEASE} && exit 1)
-    
-                echo "Verifying rollout ..."
-                kubectl rollout status deployment/${APP_NAME} -n ${EKS_NAMESPACE} --timeout=300s
-              '''
-            }
+    stage('Deploy to EKS using Helm') {
+        steps {
+          withCredentials([
+            file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH'),
+            usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')
+          ]) {
+            sh '''
+              set -e
+      
+              export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+              export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+              export AWS_DEFAULT_REGION=${AWS_REGION}
+      
+              echo "Setting up kubeconfig ..."
+              cp $KUBECONFIG_PATH ./kubeconfig
+              chmod 600 ./kubeconfig
+              export KUBECONFIG=./kubeconfig
+      
+              echo "Updating kubeconfig for EKS cluster..."
+              aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H --kubeconfig ./kubeconfig
+      
+              echo "Verifying cluster access..."
+              kubectl get nodes
+      
+              echo "Deploying Helm Chart..."
+              helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
+                --namespace ${EKS_NAMESPACE} \
+                --create-namespace \
+                --set image.repository=${DOCKER_REPO} \
+                --set image.tag=${DOCKER_TAG} \
+                --wait --timeout 300s || \
+                (echo "Helm deployment failed, rolling back ..." && \
+                 helm rollback ${HELM_RELEASE} && exit 1)
+      
+              echo "Verifying rollout..."
+              kubectl rollout status deployment/${APP_NAME} -n ${EKS_NAMESPACE} --timeout=300s
+            '''
           }
         }
-      }
     }
-
+    
     /*stage('Deploy to EKS using Helm') {
       steps {
         script {
