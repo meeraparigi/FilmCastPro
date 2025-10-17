@@ -49,10 +49,10 @@ pipeline {
       steps {
         script {
           withCredentials([usernamePassword(credentialsID: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            sh '''
+            sh """
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin $DOCKER_REGISTRY
               docker push ${DOCKER_REPO}:${DOCKER_TAG}
-            '''
+            """
           }
         }
       }
