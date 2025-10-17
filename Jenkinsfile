@@ -65,7 +65,7 @@ pipeline {
                    export KUBECONFIG=$KUBECONFIG_PATH
 
                    echo "Deploying Helm Chart ..."
-                   helm upgrade install ${HELM_RELEASE} ${HELM_CHART_PATH} \
+                   helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
                      --namespace ${EKS_NAMESPACE} \
                      --set image.repository=${DOCKER_REPO} \ 
                      --set image.tag=${DOCKER_TAG} \
