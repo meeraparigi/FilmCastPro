@@ -58,17 +58,19 @@ pipeline {
       }
     }
 
-    /*stage('Deploy to EKS using Helm') {
+    stage('Deploy to EKS using Helm') {
       steps {
         script {
-                 withCredentials([file(credentialsID: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
+                 withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
                  sh '''
                    echo "Setting up kubeconfig ..."
                    export KUBECONFIG=$KUBECONFIG_PATH
+                   aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-cluster || true
 
                    echo "Deploying Helm Chart ..."
                    helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
                      --namespace ${EKS_NAMESPACE} \
+                     --create namespace \
                      --set image.repository=${DOCKER_REPO} \ 
                      --set image.tag=${DOCKER_TAG} \
                      --wait --timeout 300s || \
@@ -81,7 +83,7 @@ pipeline {
               }
            }
         }
-    }*/
+    }
 
     /*stage('Update Helm values and push to Git') {
       steps {
