@@ -1,25 +1,58 @@
-# Logs
-logs
+# =========================================
+# Terraform (EKS-Cluster and Jenkins-Setup)
+# =========================================
+
+# Ignore Terraform working directories
+EKS-Cluster/.terraform/
+Jenkins-Setup/.terraform/
+
+# Ignore Terraform state files and backups
+EKS-Cluster/*.tfstate
+EKS-Cluster/*.tfstate.*
+EKS-Cluster/*.backup
+Jenkins-Setup/*.tfstate
+Jenkins-Setup/*.tfstate.*
+Jenkins-Setup/*.backup
+
+# Ignore Terraform lock files
+EKS-Cluster/.terraform.lock.hcl
+Jenkins-Setup/.terraform.lock.hcl
+
+# Ignore Terraform crash logs and plan files
+EKS-Cluster/crash.log
+EKS-Cluster/*.tfplan
+Jenkins-Setup/crash.log
+Jenkins-Setup/*.tfplan
+
+# =========================================
+# Node / React app (sample-react-app)
+# =========================================
+
+sample-react-app/node_modules/
+sample-react-app/build/
+sample-react-app/dist/
+sample-react-app/coverage/
+sample-react-app/.env*
+sample-react-app/npm-debug.log*
+sample-react-app/yarn-debug.log*
+sample-react-app/yarn-error.log*
+
+# =========================================
+# Docker / Jenkins / Miscellaneous
+# =========================================
+
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+.dockerignore
 
-node_modules
-dist
-dist-ssr
-*.local
+# System or Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env
+# Temporary / archive files
+*.zip
+*.tar.gz
+*.tmp
