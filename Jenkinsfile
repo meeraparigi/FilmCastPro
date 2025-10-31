@@ -2,16 +2,25 @@
 pipeline {
   agent any
 
+  parameters {
+    choice(
+      name: 'DEPLOY_METHOD',
+      choices: ['helm','argocd'],
+      description: 'Choose the deployment method for EKS (Helm or ArgoCD)'
+    )
+  }
+  
   environment {
-    APP_NAME = "filmcastpro-app"
-    DOCKER_REGISTRY = "docker.io"
-    DOCKER_REPO = "meeraparigi/filmcastpro-app"
-    DOCKER_TAG = "${env.BUILD_NUMBER}"
-    AWS_REGION = "us-east-1"
+    AWS_REGION = 'us-east-1'
+    CLUSTER_NAME = 'eks-cluster-cd-deploy'
+    EKS_NAMESPACE = 'staging'
+    HELM_RELEASE = 'filmcastpro-app-release'
+    HELM_CHART_PATH = 'helm/filmcastpro-app'
+    DOCKER_REPO = 'meeraparigi/filmcastpro-app'
+    DOCKER_TAG = '${env.BUILD_NUMBER}'
+    ARGO_APP_NAME = "filmcastpro-app"
+    DOCKER_REGISTRY = "docker.io"  
     KUBE_CONFIG = "eks-kubeconfig"
-    HELM_RELEASE = "filmcastpro-app-release"
-    HELM_CHART_PATH = "helm/filmcastpro-app"
-    EKS_NAMESPACE = "staging"
   }
 
   tools {
@@ -58,13 +67,32 @@ pipeline {
       }
     }
 
-    stage('Deploy to EKS using Helm') {
-        steps {
-          withCredentials([
+    stage('Deploy to EKS') {
+      steps{
+        script{
+          if (params.DEPLOY_METHOD == 'helm') {
+            echo "Deploying via Helm ..."
+            deployviaHelm()
+          } 
+          else if (params.DEPLOY_METHOD == 'argocd') {
+            echo "Deploying via ArgoCD ..."
+            deployViaArgoCD()
+          } 
+          else {
+            error("Unsupported deployment method: ${params.DEPLOY_METHOD}")
+          }
+        }
+      }  
+    }
+
+    // Functions for Deployment
+
+    def deployViaHelm() {
+        withCredentials([
             file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH'),
             string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
             string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-          ]) {
+        ]) {
             sh '''
               set -e
       
@@ -73,22 +101,24 @@ pipeline {
               export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
               export AWS_DEFAULT_REGION=${AWS_REGION}
       
-              echo "Setting up kubeconfig ..."
+              /*echo "Setting up kubeconfig ..."
               cp $KUBECONFIG_PATH ./kubeconfig
-              chmod 600 ./kubeconfig
-              export KUBECONFIG=./kubeconfig
+              chmod 600 ./kubeconfig*/
+              
       
               echo "Updating kubeconfig for EKS cluster..."
-              aws eks --region ${AWS_REGION} update-kubeconfig \
-                --name filmcastpro-eks-wUCMwp4H \
+              aws eks update-kubeconfig \
+                --name ${CLUSTER_NAME} \
+                --region ${AWS_REGION} \
                 --kubeconfig ./kubeconfig \
-                --alias filmcastpro-eks
+
+              export KUBECONFIG=./kubeconfig
       
               echo "Verifying AWS identity ..."
               aws sts get-caller-identity
       
               echo "Verifying cluster access..."
-              aws eks get-token --cluster-name filmcastpro-eks-wUCMwp4H --region ${AWS_REGION} >/dev/null
+              aws eks get-token --cluster-name ${CLUSTER_NAME} --region ${AWS_REGION} >/dev/null
               kubectl get nodes
       
               echo "Deploying Helm Chart..."
@@ -100,39 +130,13 @@ pipeline {
                 --wait --timeout 300s || \
                 (echo "Helm deployment failed, rolling back ..." && \
                  helm rollback ${HELM_RELEASE} && exit 1)
+
+              echo "Checking deployment status ..."
+              kubectl rollout status deployment/${HELM_RELEASE} -n ${EKS_NAMESPACE} --timeout=180s
+              echo "Deployment succeeded via Helm ..."
             '''
         }
-      }
     }
-
-    
-
-    /*stage('Deploy to EKS using Helm') {
-      steps {
-        script {
-                 withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH')]) {
-                 sh '''
-                   echo "Setting up kubeconfig ..."
-                   export KUBECONFIG=$KUBECONFIG_PATH
-                   aws eks --region ${AWS_REGION} update-kubeconfig --name filmcastpro-eks-wUCMwp4H || true
-
-                   echo "Deploying Helm Chart ..."
-                   helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
-                     --namespace ${EKS_NAMESPACE} \
-                     --create namespace \
-                     --set image.repository=${DOCKER_REPO} \ 
-                     --set image.tag=${DOCKER_TAG} \
-                     --wait --timeout 300s || \
-                     (echo "Helm deployment failed, rolling back ..." && \
-                      helm rollback ${HELM_RELEASE} && exit 1)
-
-                   echo "Verifying deployment ..."
-                   kubectl rollout staus deployment/${APP_NAME} -n ${EKS_NAMESPACE} --timeout=300s 
-                 '''
-              }
-           }
-        }
-    }*/
 
     /*stage('Update Helm values and push to Git') {
       steps {
@@ -149,17 +153,24 @@ pipeline {
       }
     }*/
 
-    /*stage('Trigger ArgoCD Deployment') {
-      steps {
-        withCredentials([string(credentialsId: 'argocd-token', variable: 'ARGOCD_AUTH_TOKEN')]) {
+    def deployViaArgoCD() {
+        withCredentials([
+          usernamePassword(credentialsId: 'argocd-admin-creds', usernameVariablevariable: 'ARGOCD_USERNAME', passwordVariable: 'ARGOCD_PASSWORD')
+        ]) {
           sh '''
-            argocd login argocd-server.example.com --grpc-web --username admin --password $ARGOCD_AUTH_TOKEN --insecure
-            argocd app sync ${APP_NAME} --gprc-web --timeout 600
-            argocd app wait ${APP_NAME} --sync --health --timeout 600
+            set -e
+            echo "Logging in to ArgoCD ..."
+            argocd login argocd-server.example.com --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+
+            echo "Syncing ArgoCD Application ..."
+            argocd app sync ${ARGO_APP_NAME} --prune --timeout 300
+
+            echo "Waiting for ArgoCD application to become healthy ..."
+            argocd app wait ${ARGO_APP_NAME} --health --timeout 300
+
+            echo "Deployment succeeded via ArgoCD ..."
           '''
         }
-      }
-    } */
-    
+    }
   } 
 }
