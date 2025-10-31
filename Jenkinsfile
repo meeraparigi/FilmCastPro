@@ -85,9 +85,26 @@ pipeline {
       }  
     }
 
-    // Functions for Deployment
+    /*stage('Update Helm values and push to Git') {
+      steps {
+        script {
+          sh '''
+            sed -i "s|tag: .*|tag: ${DOCKER_TAG}|" ${HELM_CHART_PATH}/values.yaml
+            git config --global user.email "meera22_99@yahoo.com"
+            git config --global user.name "meeraparigi"
+            git add ${HELM_CHART_PATH}/values.yaml
+            git commit -m "Update image tag to ${DOCKER_TAG} for release ${HELM_RELEASE}"
+            git push origin master
+          '''
+        }
+      }
+    }*/
+  } 
+}
 
-    def deployViaHelm() {
+// Functions for Deployment
+
+def deployViaHelm() {
         withCredentials([
             file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH'),
             string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
@@ -105,7 +122,6 @@ pipeline {
               cp $KUBECONFIG_PATH ./kubeconfig
               chmod 600 ./kubeconfig*/
               
-      
               echo "Updating kubeconfig for EKS cluster..."
               aws eks update-kubeconfig \
                 --name ${CLUSTER_NAME} \
@@ -138,22 +154,7 @@ pipeline {
         }
     }
 
-    /*stage('Update Helm values and push to Git') {
-      steps {
-        script {
-          sh '''
-            sed -i "s|tag: .*|tag: ${DOCKER_TAG}|" ${HELM_CHART_PATH}/values.yaml
-            git config --global user.email "meera22_99@yahoo.com"
-            git config --global user.name "meeraparigi"
-            git add ${HELM_CHART_PATH}/values.yaml
-            git commit -m "Update image tag to ${DOCKER_TAG} for release ${HELM_RELEASE}"
-            git push origin master
-          '''
-        }
-      }
-    }*/
-
-    def deployViaArgoCD() {
+def deployViaArgoCD() {
         withCredentials([
           usernamePassword(credentialsId: 'argocd-admin-creds', usernameVariablevariable: 'ARGOCD_USERNAME', passwordVariable: 'ARGOCD_PASSWORD')
         ]) {
@@ -172,5 +173,3 @@ pipeline {
           '''
         }
     }
-  } 
-}
