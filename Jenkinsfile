@@ -2,7 +2,7 @@
 pipeline {
   agent {
     docker {
-      image '$DOCKER_USER/node18-libatomic:latest'
+      image 'meeraparigi/node18-libatomic:latest'
       args '-u root'
     }
   }
