@@ -3,14 +3,14 @@ pipeline {
     agent {
         docker {
             image 'meeraparigi/node18-libatomic:latest'
-            args '-u root' // Run container as root for apt/aws/kubectl access
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
     parameters {
         choice(
             name: 'DEPLOY_METHOD',
-            choices: ['helm', 'argocd'],
+            choices: ['helm','argocd'],
             description: 'Choose the deployment method for EKS (Helm or ArgoCD)'
         )
     }
@@ -24,19 +24,19 @@ pipeline {
         DOCKER_REPO = 'meeraparigi/filmcastpro-app'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         ARGO_APP_NAME = "filmcastpro-app"
-        DOCKER_REGISTRY = "docker.io"
+        DOCKER_REGISTRY = "docker.io"  
         KUBE_CONFIG = "eks-kubeconfig"
     }
 
     tools {
-        nodejs "Node18"
+        nodejs "Node18"  
     }
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'master', url: 'https://github.com/meeraparigi/FilmCastPro.git'
-            }
+            }  
         }
 
         stage('Install Dependencies') {
@@ -47,7 +47,7 @@ pipeline {
 
         stage('Build Application') {
             steps {
-                sh 'npm run build'
+                sh 'npm run build'  
             }
         }
 
@@ -87,14 +87,12 @@ pipeline {
                         error("Unsupported deployment method: ${params.DEPLOY_METHOD}")
                     }
                 }
-            }
+            }  
         }
     }
 }
 
-// ===========================
-// Deployment Functions
-// ===========================
+// Functions for Deployment
 
 def deployViaHelm() {
     withCredentials([
@@ -105,17 +103,24 @@ def deployViaHelm() {
         sh '''
             set -e
 
-            echo "Setting up AWS credentials..."
+            echo "Setting up AWS credentials ..."
             export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
             export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
             export AWS_DEFAULT_REGION=${AWS_REGION}
 
             echo "Updating kubeconfig for EKS cluster..."
-            aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION} --kubeconfig ./kubeconfig
+            aws eks update-kubeconfig \
+                --name ${CLUSTER_NAME} \
+                --region ${AWS_REGION} \
+                --kubeconfig ./kubeconfig
 
             export KUBECONFIG=./kubeconfig
 
+            echo "Verifying AWS identity ..."
+            aws sts get-caller-identity
+
             echo "Verifying cluster access..."
+            aws eks get-token --cluster-name ${CLUSTER_NAME} --region ${AWS_REGION} >/dev/null
             kubectl get nodes
 
             echo "Deploying Helm Chart..."
@@ -125,12 +130,12 @@ def deployViaHelm() {
                 --set image.repository=${DOCKER_REPO} \
                 --set image.tag=${DOCKER_TAG} \
                 --wait --timeout 300s || \
-                (echo "Helm deployment failed, rolling back ..." && helm rollback ${HELM_RELEASE} && exit 1)
+                (echo "Helm deployment failed, rolling back ..." && \
+                 helm rollback ${HELM_RELEASE} && exit 1)
 
-            echo "Checking deployment status..."
+            echo "Checking deployment status ..."
             kubectl rollout status deployment/${HELM_RELEASE} -n ${EKS_NAMESPACE} --timeout=180s
-
-            echo "Deployment succeeded via Helm!"
+            echo "Deployment succeeded via Helm ..."
         '''
     }
 }
@@ -141,16 +146,16 @@ def deployViaArgoCD() {
     ]) {
         sh '''
             set -e
-            echo "Logging in to ArgoCD..."
+            echo "Logging in to ArgoCD ..."
             argocd login argocd-server.example.com --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
 
-            echo "Syncing ArgoCD Application..."
+            echo "Syncing ArgoCD Application ..."
             argocd app sync ${ARGO_APP_NAME} --prune --timeout 300
 
-            echo "Waiting for ArgoCD application to become healthy..."
+            echo "Waiting for ArgoCD application to become healthy ..."
             argocd app wait ${ARGO_APP_NAME} --health --timeout 300
 
-            echo "Deployment succeeded via ArgoCD!"
+            echo "Deployment succeeded via ArgoCD ..."
         '''
     }
 }
