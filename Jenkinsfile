@@ -36,7 +36,11 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-            sh 'npm ci'  
+            sh '''
+              sudo apt-get update -y
+              sudo apt-get install -y libatomic1
+              npm ci
+            '''
       }
     }
 
