@@ -1,6 +1,11 @@
 /*Jenkins file for Continuous Deployment*/
 pipeline {
-  agent any
+  agent {
+    docker {
+      image '$DOCKER_USER/node18-libatomic:latest'
+      args '-u root'
+    }
+  }
 
   parameters {
     choice(
@@ -36,11 +41,7 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-            sh '''
-              sudo apt-get update -y
-              sudo apt-get install -y libatomic1
-              npm ci
-            '''
+            sh 'npm ci'
       }
     }
 
