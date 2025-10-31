@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
+RUN apt-get update && apt-get install -y libatomic1
 RUN npm ci && npm cache clean --force
 
 # Copy the rest of the source code
