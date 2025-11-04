@@ -96,7 +96,7 @@ pipeline {
                             if ! argocd app get ${APP_NAME} >/dev/null 2>&1; then
                                 echo "⚙️  Creating ArgoCD Application ${APP_NAME}..."
                                 argocd app create ${APP_NAME} \
-                                    --repo https://github.com/your-org/your-repo.git \
+                                    --repo https://github.com/meeraparigi/FilmCastPro.git \
                                     --path helm-chart \
                                     --dest-server https://kubernetes.default.svc \
                                     --dest-namespace ${EKS_NAMESPACE} \
