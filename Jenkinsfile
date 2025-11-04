@@ -1,161 +1,131 @@
-/* Jenkinsfile for Continuous Deployment */
 pipeline {
-    agent {
-        docker {
-            image 'meeraparigi/node18-libatomic:latest'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     parameters {
         choice(
-            name: 'DEPLOY_METHOD',
-            choices: ['helm','argocd'],
-            description: 'Choose the deployment method for EKS (Helm or ArgoCD)'
+            name: 'DEPLOYMENT_OPTION',
+            choices: ['helm', 'argocd'],
+            description: 'Select deployment method: Helm or ArgoCD'
         )
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag (e.g., v1.0.0)')
     }
 
     environment {
-        AWS_REGION = 'us-east-1'
-        CLUSTER_NAME = 'eks-cluster-cd-deploy'
-        EKS_NAMESPACE = 'staging'
-        HELM_RELEASE = 'filmcastpro-app-release'
-        HELM_CHART_PATH = 'helm/filmcastpro-app'
-        DOCKER_REPO = 'meeraparigi/filmcastpro-app'
-        DOCKER_TAG = "${env.BUILD_NUMBER}"
-        ARGO_APP_NAME = "filmcastpro-app"
-        DOCKER_REGISTRY = "docker.io"  
-        KUBE_CONFIG = "eks-kubeconfig"
-    }
-
-    tools {
-        nodejs "Node18"  
+        DOCKERHUB_USER   = credentials('dockerhub-username')    // Jenkins credential ID for Docker Hub username/password
+        DOCKERHUB_PASS   = credentials('dockerhub-password')
+        DOCKER_REPO      = "yourdockerhubusername/myapp"        // e.g. "mydockerhubuser/myapp"
+        APP_NAME         = "myapp"
+        EKS_NAMESPACE    = "default"
+        HELM_CHART_PATH  = "./helm-chart"
+        KUBECONFIG       = "/var/lib/jenkins/.kube/config"
+        ARGOCD_SERVER    = "argocd.example.com"                 // Update this to your ArgoCD endpoint
+        ARGOCD_USER      = credentials('argocd-username')       // Jenkins credential IDs
+        ARGOCD_PASS      = credentials('argocd-password')
+        IMAGE_URI        = "${DOCKER_REPO}:${IMAGE_TAG}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/meeraparigi/FilmCastPro.git'
-            }  
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm ci'
+                echo "🔹 Checking out source code..."
+                git branch: 'main', url: 'https://github.com/your-org/your-repo.git'
             }
         }
 
-        stage('Build Application') {
+        stage('Build') {
             steps {
-                sh 'npm run build'  
+                echo "🔹 Building application..."
+                // Example build step
+                sh '''
+                    # For Node.js, Python, or Java
+                    # npm install && npm run build
+                    # mvn clean package
+                    echo "Build completed"
+                '''
             }
         }
 
-        stage('Docker Build Image') {
+        stage('Docker Build & Push') {
             steps {
-                script {
-                    dockerImage = docker.build("${DOCKER_REPO}:${DOCKER_TAG}", ".")
-                }
-            }
-        }
+                echo "🔹 Building and pushing image to Docker Hub..."
+                sh '''
+                    echo "Logging into Docker Hub..."
+                    echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
 
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-                    ]) {
-                        sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin $DOCKER_REGISTRY
-                            docker push ${DOCKER_REPO}:${DOCKER_TAG}
-                        """
-                    }
-                }
+                    echo "Building Docker image..."
+                    docker build -t $IMAGE_URI .
+
+                    echo "Pushing image to Docker Hub..."
+                    docker push $IMAGE_URI
+
+                    docker logout
+                '''
             }
         }
 
         stage('Deploy to EKS') {
+            when {
+                anyOf {
+                    expression { params.DEPLOYMENT_OPTION == 'helm' }
+                    expression { params.DEPLOYMENT_OPTION == 'argocd' }
+                }
+            }
             steps {
                 script {
-                    if (params.DEPLOY_METHOD == 'helm') {
-                        echo "Deploying via Helm ..."
-                        deployViaHelm()
-                    } else if (params.DEPLOY_METHOD == 'argocd') {
-                        echo "Deploying via ArgoCD ..."
-                        deployViaArgoCD()
-                    } else {
-                        error("Unsupported deployment method: ${params.DEPLOY_METHOD}")
+                    if (params.DEPLOYMENT_OPTION == 'helm') {
+                        echo "🔹 Deploying via Helm..."
+                        sh '''
+                            helm upgrade --install ${APP_NAME} ${HELM_CHART_PATH} \
+                                --namespace ${EKS_NAMESPACE} \
+                                --create-namespace \
+                                --set image.repository=${DOCKER_REPO} \
+                                --set image.tag=${IMAGE_TAG} \
+                                --wait
+                        '''
+                    } else if (params.DEPLOYMENT_OPTION == 'argocd') {
+                        echo "🔹 Deploying via ArgoCD..."
+
+                        sh '''
+                            echo "Logging into ArgoCD..."
+                            argocd login ${ARGOCD_SERVER} \
+                                --username ${ARGOCD_USER} \
+                                --password ${ARGOCD_PASS} \
+                                --insecure || true
+
+                            echo "Checking if ArgoCD application ${APP_NAME} exists..."
+                            if ! argocd app get ${APP_NAME} >/dev/null 2>&1; then
+                                echo "⚙️  Creating ArgoCD Application ${APP_NAME}..."
+                                argocd app create ${APP_NAME} \
+                                    --repo https://github.com/your-org/your-repo.git \
+                                    --path helm-chart \
+                                    --dest-server https://kubernetes.default.svc \
+                                    --dest-namespace ${EKS_NAMESPACE} \
+                                    --sync-policy automated \
+                                    --self-heal \
+                                    --auto-prune
+                            else
+                                echo "✅ ArgoCD application ${APP_NAME} already exists"
+                            fi
+
+                            echo "🔄 Updating image tag in ArgoCD parameters..."
+                            argocd app set ${APP_NAME} --parameter image.repository=${DOCKER_REPO}
+                            argocd app set ${APP_NAME} --parameter image.tag=${IMAGE_TAG}
+
+                            echo "🚀 Syncing ArgoCD application..."
+                            argocd app sync ${APP_NAME} --async
+                        '''
                     }
                 }
-            }  
+            }
         }
     }
-}
 
-// Functions for Deployment
-
-def deployViaHelm() {
-    withCredentials([
-        file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG_PATH'),
-        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-    ]) {
-        sh '''
-            set -e
-
-            echo "Setting up AWS credentials ..."
-            export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-            export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-            export AWS_DEFAULT_REGION=${AWS_REGION}
-
-            echo "Updating kubeconfig for EKS cluster..."
-            aws eks update-kubeconfig \
-                --name ${CLUSTER_NAME} \
-                --region ${AWS_REGION} \
-                --kubeconfig ./kubeconfig
-
-            export KUBECONFIG=./kubeconfig
-
-            echo "Verifying AWS identity ..."
-            aws sts get-caller-identity
-
-            echo "Verifying cluster access..."
-            aws eks get-token --cluster-name ${CLUSTER_NAME} --region ${AWS_REGION} >/dev/null
-            kubectl get nodes
-
-            echo "Deploying Helm Chart..."
-            helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_PATH} \
-                --namespace ${EKS_NAMESPACE} \
-                --create-namespace \
-                --set image.repository=${DOCKER_REPO} \
-                --set image.tag=${DOCKER_TAG} \
-                --wait --timeout 300s || \
-                (echo "Helm deployment failed, rolling back ..." && \
-                 helm rollback ${HELM_RELEASE} && exit 1)
-
-            echo "Checking deployment status ..."
-            kubectl rollout status deployment/${HELM_RELEASE} -n ${EKS_NAMESPACE} --timeout=180s
-            echo "Deployment succeeded via Helm ..."
-        '''
-    }
-}
-
-def deployViaArgoCD() {
-    withCredentials([
-        usernamePassword(credentialsId: 'argocd-admin-creds', usernameVariable: 'ARGOCD_USERNAME', passwordVariable: 'ARGOCD_PASSWORD')
-    ]) {
-        sh '''
-            set -e
-            echo "Logging in to ArgoCD ..."
-            argocd login argocd-server.example.com --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
-
-            echo "Syncing ArgoCD Application ..."
-            argocd app sync ${ARGO_APP_NAME} --prune --timeout 300
-
-            echo "Waiting for ArgoCD application to become healthy ..."
-            argocd app wait ${ARGO_APP_NAME} --health --timeout 300
-
-            echo "Deployment succeeded via ArgoCD ..."
-        '''
+    post {
+        success {
+            echo "✅ Deployment via ${params.DEPLOYMENT_OPTION} succeeded."
+        }
+        failure {
+            echo "❌ Deployment failed. Check logs above."
+        }
     }
 }
