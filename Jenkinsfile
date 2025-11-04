@@ -13,8 +13,8 @@ pipeline {
     environment {
         DOCKERHUB_USER   = credentials('dockerhub-username')    // Jenkins credential ID for Docker Hub username/password
         DOCKERHUB_PASS   = credentials('dockerhub-password')
-        DOCKER_REPO      = "meeraparigi/myapp"        // e.g. "mydockerhubuser/myapp"
-        APP_NAME         = "myapp"
+        DOCKER_REPO      = "meeraparigi/filmcastpro-app"        // e.g. "mydockerhubuser/myapp"
+        APP_NAME         = "filmcastpro-app"
         EKS_NAMESPACE    = "default"
         HELM_CHART_PATH  = "./helm-chart"
         KUBECONFIG       = "/var/lib/jenkins/.kube/config"
