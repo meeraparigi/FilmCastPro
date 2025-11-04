@@ -13,7 +13,7 @@ pipeline {
     environment {
         DOCKERHUB_USER   = credentials('dockerhub-username')    // Jenkins credential ID for Docker Hub username/password
         DOCKERHUB_PASS   = credentials('dockerhub-password')
-        DOCKER_REPO      = "yourdockerhubusername/myapp"        // e.g. "mydockerhubuser/myapp"
+        DOCKER_REPO      = "meeraparigi/myapp"        // e.g. "mydockerhubuser/myapp"
         APP_NAME         = "myapp"
         EKS_NAMESPACE    = "default"
         HELM_CHART_PATH  = "./helm-chart"
@@ -28,7 +28,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "🔹 Checking out source code..."
-                git branch: 'main', url: 'https://github.com/your-org/your-repo.git'
+                git branch: 'master', url: 'https://github.com/meeraparigi/FilmCastPro.git'
             }
         }
 
@@ -38,7 +38,7 @@ pipeline {
                 // Example build step
                 sh '''
                     # For Node.js, Python, or Java
-                    # npm install && npm run build
+                    npm install && npm run build
                     # mvn clean package
                     echo "Build completed"
                 '''
