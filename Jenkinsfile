@@ -16,7 +16,7 @@ pipeline {
         DOCKER_REPO      = "meeraparigi/filmcastpro-app"        // e.g. "mydockerhubuser/myapp"
         APP_NAME         = "filmcastpro-app"
         EKS_NAMESPACE    = "default"
-        HELM_CHART_PATH  = "./helm-chart"
+        HELM_CHART_PATH  = "./helm/filmcastpro-app"
         KUBECONFIG       = "/var/lib/jenkins/.kube/config"
         ARGOCD_SERVER    = "argocd.example.com"                 // Update this to your ArgoCD endpoint
         ARGOCD_USER      = credentials('argocd-username')       // Jenkins credential IDs
