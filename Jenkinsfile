@@ -17,7 +17,7 @@ pipeline {
         APP_NAME         = "filmcastpro-app"
         EKS_NAMESPACE    = "default"
         HELM_CHART_PATH  = "./helm/filmcastpro-app"
-        ARGOCD_PATH      = "./argocd"
+        ARGOCD_PATH      = "helm/filmcastpro-app"
         KUBECONFIG       = "/var/lib/jenkins/.kube/config"
         ARGOCD_SERVER    = credentials('argocd-server')         // Update this to your ArgoCD endpoint
         ARGOCD_USER      = credentials('argocd-username')       // Jenkins credential IDs
@@ -104,6 +104,7 @@ pipeline {
                                     --sync-policy automated \
                                     --self-heal \
                                     --auto-prune
+                                /*kubectl apply -f argocd/filmcastpro-app.yaml -n argocd*/
                             else
                                 echo "✅ ArgoCD application ${APP_NAME} already exists"
                             fi
