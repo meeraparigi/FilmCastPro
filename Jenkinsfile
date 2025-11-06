@@ -17,6 +17,7 @@ pipeline {
         APP_NAME         = "filmcastpro-app"
         EKS_NAMESPACE    = "default"
         HELM_CHART_PATH  = "./helm/filmcastpro-app"
+        ARGOCD_PATH      = "./argocd"
         KUBECONFIG       = "/var/lib/jenkins/.kube/config"
         ARGOCD_SERVER    = credentials('argocd-server')         // Update this to your ArgoCD endpoint
         ARGOCD_USER      = credentials('argocd-username')       // Jenkins credential IDs
@@ -97,7 +98,7 @@ pipeline {
                                 echo "⚙️  Creating ArgoCD Application ${APP_NAME}..."
                                 argocd app create ${APP_NAME} \
                                     --repo https://github.com/meeraparigi/FilmCastPro.git \
-                                    --path ${HELM_CHART_PATH} \
+                                    --path ${ARGOCD_PATH} \
                                     --dest-server https://kubernetes.default.svc \
                                     --dest-namespace ${EKS_NAMESPACE} \
                                     --sync-policy automated \
